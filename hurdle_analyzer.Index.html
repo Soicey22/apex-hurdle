@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX — Hurdle Performance System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0:#080909;--bg1:#0d0e10;--bg2:#111315;--bg3:#171a1d;--bg4:#1d2024;
+  --line:rgba(255,255,255,0.06);--line2:rgba(255,255,255,0.10);--line3:rgba(255,255,255,0.16);
+  --txt:#e2e4e8;--txt2:#8a8f99;--txt3:#565b66;
+  --accent:#00d4ff;--accent2:#0099cc;--accent-glow:rgba(0,212,255,0.07);--accent-dim:rgba(0,212,255,0.12);
+  --green:#00e5a0;--green-dim:rgba(0,229,160,0.10);
+  --amber:#ffb020;--amber-dim:rgba(255,176,32,0.10);
+  --red:#ff4d6a;--red-dim:rgba(255,77,106,0.10);
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.10);
+  --r4:4px;--r6:6px;--r8:8px;
+  --mono:'JetBrains Mono','Courier New',monospace;
+  --sans:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg0);color:var(--txt);font-family:var(--sans);font-size:13px;line-height:1.4}
+#topbar{display:flex;align-items:center;height:42px;background:var(--bg1);border-bottom:1px solid var(--line);padding:0 16px;flex-shrink:0;position:relative;z-index:100;}
+.wordmark{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:0.14em;color:var(--txt);display:flex;align-items:center;gap:7px;margin-right:22px;}
+.wdot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);}
+.nav-tabs{display:flex;height:100%;}
+.nav-tab{height:100%;padding:0 15px;display:flex;align-items:center;font-size:11px;font-weight:500;letter-spacing:0.04em;color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap;}
+.nav-tab:hover{color:var(--txt2);}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.topbar-r{margin-left:auto;display:flex;align-items:center;gap:7px;}
+.pill{font-size:9px;font-family:var(--mono);letter-spacing:0.07em;padding:3px 9px;border-radius:20px;background:var(--bg3);border:1px solid var(--line2);color:var(--txt3);}
+.pill.live{color:var(--green);border-color:rgba(0,229,160,0.25);background:var(--green-dim);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.45;}}
+.pulsing{animation:pulse 1.3s ease infinite;}
+#app{display:flex;height:calc(100vh - 42px);}
+#left{display:flex;flex-direction:column;flex:1;min-width:0;overflow:hidden;}
+#videoWrap{flex:1;min-height:0;background:#000;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+#videoEl{max-width:100%;max-height:100%;display:none;}
+#dropZone{position:absolute;inset:18px;border:1px dashed var(--line3);border-radius:var(--r8);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer;transition:border-color .2s,background .2s;z-index:5;}
+#dropZone:hover,#dropZone.over{border-color:var(--accent);background:var(--accent-glow);}
+#dropZone svg{opacity:0.25;}
+.dz-t{font-size:14px;font-weight:500;color:var(--txt2);}
+.dz-s{font-size:11px;color:var(--txt3);font-family:var(--mono);}
+#fileInput{display:none;}
+#hud{position:absolute;top:14px;left:14px;z-index:10;display:none;pointer-events:none;}
+.hud-tc{font-family:var(--mono);font-size:26px;font-weight:400;color:#fff;letter-spacing:-0.5px;line-height:1;text-shadow:0 1px 14px rgba(0,0,0,0.95);}
+.hud-meta{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;text-shadow:0 1px 8px rgba(0,0,0,0.9);}
+.hud-next{margin-top:8px;font-size:11px;font-weight:500;color:var(--accent);text-shadow:0 1px 8px rgba(0,0,0,0.9);}
+#targetBadge{position:absolute;top:14px;right:14px;background:rgba(0,0,0,0.8);border:1px solid var(--line3);border-radius:var(--r6);padding:10px 14px;display:none;z-index:10;min-width:90px;}
+.tb-lbl{font-size:9px;color:var(--txt3);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:3px;}
+.tb-h{font-size:22px;font-weight:500;color:#fff;font-family:var(--mono);letter-spacing:-0.5px;}
+.tb-s{font-size:10px;color:var(--txt2);margin-top:3px;}
+#zoomLoupe{position:absolute;bottom:76px;right:14px;width:150px;height:84px;border:1px solid var(--line3);border-radius:var(--r6);overflow:hidden;display:none;z-index:10;background:#000;}
+#zoomCanvas{width:100%;height:100%;}
+.loupe-lbl{position:absolute;top:4px;left:6px;font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:0.06em;}
+#transport{background:var(--bg1);border-top:1px solid var(--line);flex-shrink:0;}
+.tl-outer{padding:9px 14px 0;}
+.tl-bar{position:relative;height:28px;background:var(--bg3);border-radius:var(--r4);overflow:hidden;cursor:pointer;}
+.tl-prog{position:absolute;top:0;left:0;height:100%;background:var(--accent-glow);pointer-events:none;}
+#scrubber{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;}
+.tl-marks{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+.tl-mk{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);opacity:0.75;transform:translateX(-50%);}
+.tl-mk-lbl{position:absolute;top:2px;font-size:8px;font-family:var(--mono);color:var(--accent);transform:translateX(-50%);white-space:nowrap;}
+.tl-mk.smk{background:var(--green);opacity:0.9;}
+.tl-mk.smk+.tl-mk-lbl{color:var(--green);}
+.tl-mk.bmk{background:var(--purple);opacity:0.5;}
+.tc-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--txt3);padding:3px 0 8px;}
+.ctrl-row{display:flex;align-items:center;gap:5px;padding:7px 14px 9px;border-top:1px solid var(--line);flex-wrap:nowrap;}
+.cb{display:flex;align-items:center;justify-content:center;gap:5px;padding:5px 11px;border-radius:var(--r6);border:1px solid var(--line2);background:var(--bg3);color:var(--txt2);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .12s;white-space:nowrap;flex-shrink:0;}
+.cb:hover{background:var(--bg4);border-color:var(--line3);color:var(--txt);}
+.cb:active{transform:scale(0.96);}
+.cb.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600;}
+.cb.primary:hover{background:#33ddff;}
+.cb.green{background:var(--green-dim);color:var(--green);border-color:rgba(0,229,160,0.25);font-weight:500;padding:5px 16px;font-size:12px;}
+.cb.green:hover{background:rgba(0,229,160,0.18);}
+.cb.green:disabled{opacity:0.35;cursor:not-allowed;}
+.cb.startcol{color:var(--green);border-color:rgba(0,229,160,0.2);}
+kbd{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:15px;padding:0 3px;font-size:9px;font-family:var(--mono);background:var(--bg4);border:1px solid var(--line2);border-radius:3px;color:var(--txt3);}
+.sp{width:1px;height:18px;background:var(--line);flex-shrink:0;margin:0 2px;}
+.fx{flex:1;}
+.note-inline{flex:0 0 160px;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r4);color:var(--txt);font-family:var(--sans);font-size:11px;padding:5px 8px;outline:none;}
+.note-inline:focus{border-color:var(--line3);}
+.note-inline::placeholder{color:var(--txt3);}
+.spsel{padding:5px 7px;border-radius:var(--r6);border:1px solid var(--line2);background:var(--bg3);color:var(--txt2);font-family:var(--mono);font-size:11px;cursor:pointer;outline:none;}
+#right{width:356px;flex-shrink:0;background:var(--bg1);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;}
+.ptabs{display:flex;border-bottom:1px solid var(--line);background:var(--bg1);flex-shrink:0;}
+.ptab{flex:1;padding:9px 4px;text-align:center;font-size:9px;font-weight:500;letter-spacing:0.06em;color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;text-transform:uppercase;}
+.ptab:hover{color:var(--txt2);}
+.ptab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.pb{flex:1;overflow-y:auto;overflow-x:hidden;display:none;flex-direction:column;}
+.pb.active{display:flex;}
+.pb::-webkit-scrollbar{width:3px;}
+.pb::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px;}
+.msec{padding:11px 13px;border-bottom:1px solid var(--line);}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.mfull{grid-column:1/-1;}
+.flbl{font-size:9px;color:var(--txt3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:3px;}
+.finp{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r4);color:var(--txt);font-family:var(--mono);font-size:11px;padding:5px 8px;outline:none;}
+.finp:focus{border-color:var(--line3);}
+.finp::placeholder{color:var(--txt3);}
+select.finp{cursor:pointer;}
+.sstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);flex-shrink:0;}
+.sbox{background:var(--bg1);padding:9px 8px 7px;text-align:center;}
+.sval{font-family:var(--mono);font-size:15px;font-weight:500;letter-spacing:-0.3px;color:var(--txt);line-height:1;}
+.sval.g{color:var(--green);}
+.sval.a{color:var(--amber);}
+.sval.ac{color:var(--accent);}
+.slbl{font-size:9px;color:var(--txt3);letter-spacing:0.05em;text-transform:uppercase;margin-top:3px;}
+.rsec{padding:11px 13px;border-bottom:1px solid var(--line);flex-shrink:0;}
+.rh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;}
+.slabel{font-size:9px;color:var(--txt3);letter-spacing:0.08em;text-transform:uppercase;}
+.sring-w{display:flex;align-items:center;gap:12px;}
+.sdet{flex:1;}
+.snum{font-family:var(--mono);font-size:26px;font-weight:400;color:var(--txt);letter-spacing:-1px;line-height:1;}
+.sgrade{font-size:10px;font-weight:600;letter-spacing:0.05em;margin-top:2px;}
+.sbar-t{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:7px;}
+.sbar-f{height:100%;border-radius:2px;transition:width .4s ease,background .3s;}
+.sbar-ll{font-size:9px;color:var(--txt3);margin-top:3px;display:flex;justify-content:space-between;}
+.csec{padding:12px 13px;border-bottom:1px solid var(--line);flex-shrink:0;}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+.ct{font-size:10px;color:var(--txt2);font-weight:500;}
+.cpill{font-size:9px;padding:2px 8px;border-radius:12px;background:var(--bg3);color:var(--txt3);border:1px solid var(--line);cursor:pointer;transition:all .12s;}
+.cpill:hover,.cpill.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(0,212,255,0.3);}
+.cc{position:relative;height:108px;}
+.tsec{flex:1;overflow-y:auto;min-height:0;}
+.dt{width:100%;border-collapse:collapse;table-layout:fixed;}
+.dt th{font-size:9px;color:var(--txt3);letter-spacing:0.06em;text-transform:uppercase;padding:7px 9px;text-align:left;border-bottom:1px solid var(--line);background:var(--bg1);position:sticky;top:0;z-index:2;font-weight:500;}
+.dt td{padding:6px 9px;font-size:11px;vertical-align:middle;border-bottom:1px solid var(--line);}
+.dt tr.pending td{color:var(--txt3);}
+.dt tr.tagged:hover{background:rgba(255,255,255,0.014);cursor:pointer;}
+.dt tr.flagged{background:var(--amber-dim);}
+.mn{font-family:var(--mono);}
+.ibar-w{display:flex;align-items:center;gap:5px;}
+.ibar-t{flex:1;height:2px;background:var(--bg3);border-radius:1px;overflow:hidden;min-width:24px;}
+.ibar-f{height:100%;border-radius:1px;}
+.dc{font-family:var(--mono);font-size:9px;padding:1px 4px;border-radius:3px;white-space:nowrap;}
+.dc.pos{background:var(--red-dim);color:var(--red);}
+.dc.neg{background:var(--green-dim);color:var(--green);}
+.dc.neu{background:var(--bg3);color:var(--txt3);}
+.ra{opacity:0;transition:opacity .1s;}
+tr:hover .ra{opacity:1;}
+.delx{cursor:pointer;color:var(--txt3);font-size:12px;}
+.delx:hover{color:var(--red);}
+.nc{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--purple-dim);color:var(--purple);border:1px solid rgba(167,139,250,0.2);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:66px;display:inline-block;vertical-align:middle;}
+.fdot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--amber);box-shadow:0 0 5px var(--amber);margin-right:3px;vertical-align:middle;flex-shrink:0;}
+.expbar{display:flex;gap:5px;padding:9px 13px;border-top:1px solid var(--line);flex-shrink:0;background:var(--bg1);}
+.exb{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 6px;border-radius:var(--r6);border:1px solid var(--line2);background:var(--bg2);color:var(--txt2);font-size:10px;font-family:var(--mono);letter-spacing:0.04em;cursor:pointer;transition:all .12s;}
+.exb:hover{background:var(--bg3);border-color:var(--line3);color:var(--txt);}
+.exb:active{transform:scale(0.97);}
+.anl-sec{padding:11px 13px;border-bottom:1px solid var(--line);}
+.spk-w{display:flex;gap:2px;align-items:flex-end;height:22px;margin-top:8px;}
+.spk-b{flex:1;border-radius:2px 2px 0 0;min-height:2px;}
+.asym-r{display:flex;align-items:center;gap:10px;margin-top:8px;}
+.asym-b{flex:1;height:8px;background:var(--bg3);border-radius:4px;position:relative;}
+.asym-fl{position:absolute;right:50%;top:0;height:100%;border-radius:4px 0 0 4px;}
+.asym-fr{position:absolute;left:50%;top:0;height:100%;border-radius:0 4px 4px 0;}
+.asym-c{position:absolute;left:50%;top:-2px;width:2px;height:12px;background:var(--line3);transform:translateX(-50%);}
+.asym-lbl{font-size:9px;color:var(--txt3);font-family:var(--mono);min-width:32px;text-align:center;}
+.mgr{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px;}
+.mr{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r4);padding:7px 10px;display:flex;justify-content:space-between;align-items:center;}
+.mh{font-size:10px;color:var(--txt3);font-family:var(--mono);}
+.md{font-size:11px;font-family:var(--mono);font-weight:500;}
+.md.fast{color:var(--green);}
+.md.slow{color:var(--red);}
+.md.on{color:var(--txt2);}
+.ic{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r6);padding:9px 11px;margin-top:7px;}
+.ic.warn{border-color:rgba(255,176,32,0.25);background:var(--amber-dim);}
+.ic.good{border-color:rgba(0,229,160,0.2);background:var(--green-dim);}
+.ic.info{border-color:rgba(0,212,255,0.2);background:var(--accent-glow);}
+.ic-t{font-size:10px;font-weight:600;letter-spacing:0.04em;margin-bottom:3px;}
+.ic-t.warn{color:var(--amber);}
+.ic-t.good{color:var(--green);}
+.ic-t.info{color:var(--accent);}
+.ic-b{font-size:11px;color:var(--txt2);line-height:1.55;}
+.npanel{padding:11px 13px;display:flex;flex-direction:column;gap:10px;}
+.na{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r4);color:var(--txt);font-family:var(--sans);font-size:12px;padding:7px 9px;outline:none;resize:none;min-height:68px;line-height:1.5;}
+.na:focus{border-color:var(--line3);}
+.na::placeholder{color:var(--txt3);}
+.qtrow{display:flex;flex-wrap:wrap;gap:5px;}
+.qt{font-size:10px;padding:3px 9px;border-radius:12px;border:1px solid var(--line2);background:var(--bg3);color:var(--txt2);cursor:pointer;transition:all .12s;}
+.qt:hover{border-color:var(--line3);color:var(--txt);}
+.qt.sel{background:var(--purple-dim);color:var(--purple);border-color:rgba(167,139,250,0.3);}
+.bk-list{display:flex;flex-direction:column;gap:4px;padding:9px 13px;}
+.bk-item{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:var(--r4);background:var(--bg2);border:1px solid var(--line);cursor:pointer;transition:background .12s;}
+.bk-item:hover{background:var(--bg3);}
+.bk-tc{font-family:var(--mono);font-size:11px;color:var(--accent);}
+.bk-n{font-size:11px;color:var(--txt2);flex:1;}
+.bk-d{color:var(--txt3);font-size:12px;cursor:pointer;}
+.bk-d:hover{color:var(--red);}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--line3);border-radius:var(--r6);padding:7px 16px;font-size:11px;color:var(--txt);font-family:var(--mono);opacity:0;transition:opacity .2s;pointer-events:none;z-index:999;white-space:nowrap;}
+#toast.show{opacity:1;}
+*::-webkit-scrollbar{width:3px;}
+*::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px;}
+@keyframes tagFlash{0%{background:rgba(0,229,160,0.3);}100%{background:var(--green-dim);}}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <div class="wordmark"><div class="wdot"></div>APEX</div>
+  <div class="nav-tabs">
+    <div class="nav-tab active">Analyze</div>
+    <div class="nav-tab" onclick="switchPanel('notes')">Notes</div>
+    <div class="nav-tab" onclick="switchPanel('marks')">Marks</div>
+    <div class="nav-tab" onclick="showKeys()">Keys</div>
+  </div>
+  <div class="topbar-r">
+    <div class="pill" id="statusPill">NO VIDEO</div>
+    <div class="pill live pulsing" id="fpsPill" style="display:none"></div>
+    <div class="pill" id="sessPill" style="display:none;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+  </div>
+</div>
+<div id="app">
+  <div id="left">
+    <div id="videoWrap">
+      <div id="dropZone">
+        <svg width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 8l-3 4 3 4M15 8l3 4-3 4M8 12h8"/></svg>
+        <div class="dz-t">Drop race video here</div>
+        <div class="dz-s">MP4 · MOV · WebM — stays local, never uploaded</div>
+        <input type="file" id="fileInput" accept="video/*">
+      </div>
+      <video id="videoEl" preload="metadata"></video>
+      <div id="hud">
+        <div class="hud-tc" id="hudTC">0.000</div>
+        <div class="hud-meta" id="hudMeta">Frame 0 · — fps</div>
+        <div class="hud-next" id="hudNext"></div>
+      </div>
+      <div id="targetBadge">
+        <div class="tb-lbl">Next target</div>
+        <div class="tb-h" id="tbH">Start</div>
+        <div class="tb-s" id="tbS">Press G to set gun time</div>
+      </div>
+      <div id="zoomLoupe">
+        <canvas id="zoomCanvas"></canvas>
+        <div class="loupe-lbl">2× ZOOM</div>
+      </div>
+    </div>
+    <div id="transport">
+      <div class="tl-outer">
+        <div class="tl-bar">
+          <div class="tl-prog" id="tlProg"></div>
+          <input type="range" id="scrubber" min="0" max="10000" value="0" step="1">
+          <div class="tl-marks" id="tlMarks"></div>
+        </div>
+        <div class="tc-row">
+          <span id="tcCur">00:00.000</span>
+          <span id="tcDur">00:00.000</span>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="cb" onclick="stepFrame(-1)"><kbd>←</kbd></div>
+        <div class="cb primary" id="playBtn" onclick="togglePlay()">
+          <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>
+          <kbd style="background:rgba(0,0,0,0.2);border-color:rgba(0,0,0,0.3);color:rgba(0,0,0,0.6);">K</kbd>
+        </div>
+        <div class="cb" onclick="stepFrame(1)"><kbd>→</kbd></div>
+        <div class="cb" onclick="stepFrame(-5)">–5f</div>
+        <div class="cb" onclick="stepFrame(5)">+5f</div>
+        <select class="spsel" id="speedSel" onchange="video.playbackRate=parseFloat(this.value)">
+          <option value="0.05">0.05×</option>
+          <option value="0.1">0.1×</option>
+          <option value="0.25">0.25×</option>
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="2">2×</option>
+        </select>
+        <div class="sp"></div>
+        <div class="cb startcol" onclick="tagStart()" title="Set gun time (G)">
+          <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg>
+          Set start <kbd>G</kbd>
+        </div>
+        <div class="cb" onclick="addBookmark()" title="Bookmark frame (B)">
+          <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+          <kbd>B</kbd>
+        </div>
+        <div class="sp"></div>
+        <div class="fx"></div>
+        <input class="note-inline" id="tdNote" placeholder="Quick note for next tag…">
+        <div class="cb green" id="tagBtn" onclick="tagTouchdown()" disabled>
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Tag <kbd style="background:rgba(0,0,0,0.15);border-color:rgba(0,0,0,0.2);color:rgba(0,0,0,0.6);">Space</kbd>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="right">
+    <div class="ptabs">
+      <div class="ptab active" onclick="switchPanel('data');setActiveTab(this)">Data</div>
+      <div class="ptab" onclick="switchPanel('analysis');setActiveTab(this)">Insights</div>
+      <div class="ptab" onclick="switchPanel('notes');setActiveTab(this)">Notes</div>
+      <div class="ptab" onclick="switchPanel('marks');setActiveTab(this)">Marks</div>
+    </div>
+    <!-- DATA -->
+    <div class="pb active" id="panel-data">
+      <div class="msec">
+        <div class="mgrid">
+          <div><div class="flbl">Athlete</div><input class="finp" id="mAthlete" placeholder="Name"></div>
+          <div><div class="flbl">Lane</div><input class="finp" id="mLane" placeholder="1–9"></div>
+          <div><div class="flbl">Race</div>
+            <select class="finp" id="mRace">
+              <option>110m H — Men</option><option>100m H — Women</option>
+              <option>400m H — Men</option><option>400m H — Women</option>
+              <option>60m H — Indoor</option>
+            </select>
+          </div>
+          <div><div class="flbl">Height</div>
+            <select class="finp" id="mHeight">
+              <option>106.7cm (42")</option><option>99.1cm (39")</option>
+              <option>91.4cm (36")</option><option>84.0cm (33")</option>
+            </select>
+          </div>
+          <div><div class="flbl">Hurdles</div>
+            <select class="finp" id="mCount" onchange="resetData()">
+              <option value="10">10</option><option value="7">7</option><option value="5">5</option>
+            </select>
+          </div>
+          <div><div class="flbl">fps (auto)</div><input class="finp" id="mFps" readonly placeholder="—" style="color:var(--txt3)"></div>
+          <div class="mfull"><div class="flbl">Race model</div>
+            <select class="finp" id="mModel" onchange="renderTable();drawChart()">
+              <option value="none">None</option>
+              <option value="wc_men">WC Elite Men 110m</option>
+              <option value="wc_women">WC Elite Women 100m</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="sstrip">
+        <div class="sbox"><div class="sval ac" id="stCount">0/10</div><div class="slbl">Tagged</div></div>
+        <div class="sbox"><div class="sval" id="stAvg">—</div><div class="slbl">Avg split</div></div>
+        <div class="sbox"><div class="sval g" id="stBest">—</div><div class="slbl">Best</div></div>
+        <div class="sbox"><div class="sval a" id="stWorst">—</div><div class="slbl">Worst</div></div>
+      </div>
+      <div class="rsec">
+        <div class="rh">
+          <div class="slabel">Rhythm consistency</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--txt3)" id="cvLbl">CV —%</div>
+        </div>
+        <div class="sring-w">
+          <svg width="50" height="50" viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="21" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="4"/>
+            <circle id="scoreArc" cx="25" cy="25" r="21" fill="none" stroke="var(--accent)" stroke-width="4"
+              stroke-dasharray="131.9" stroke-dashoffset="131.9" stroke-linecap="round"
+              transform="rotate(-90 25 25)" style="transition:stroke-dashoffset .5s ease,stroke .3s"/>
+          </svg>
+          <div class="sdet">
+            <div class="snum" id="scoreNum">—</div>
+            <div class="sgrade" id="scoreGrade" style="color:var(--txt3)">—</div>
+            <div class="sbar-t" style="margin-top:7px;"><div class="sbar-f" id="scoreBar" style="width:0%;background:var(--accent)"></div></div>
+            <div class="sbar-ll"><span>Irregular</span><span>Elite</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="csec">
+        <div class="ch">
+          <div class="ct">Split intervals</div>
+          <div style="display:flex;gap:4px;">
+            <div class="cpill active" id="pBar" onclick="setChartMode('bar')">Bars</div>
+            <div class="cpill" id="pLine" onclick="setChartMode('line')">Trend</div>
+          </div>
+        </div>
+        <div class="cc"><canvas id="splitChart"></canvas></div>
+      </div>
+      <div class="tsec">
+        <table class="dt">
+          <thead><tr>
+            <th style="width:34px">H</th>
+            <th style="width:52px">Time</th>
+            <th>Split / Δ avg</th>
+            <th style="width:58px">Note</th>
+            <th style="width:20px"></th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="expbar">
+        <div class="exb" onclick="exportCSV()">
+          <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>CSV
+        </div>
+        <div class="exb" onclick="copyTSV()">
+          <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy
+        </div>
+        <div class="exb" onclick="saveSession()">
+          <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>Save
+        </div>
+        <div class="exb" onclick="if(confirm('Reset?'))resetData()" style="flex:0 0 34px;color:var(--red);">
+          <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        </div>
+      </div>
+    </div>
+    <!-- INSIGHTS -->
+    <div class="pb" id="panel-analysis">
+      <div class="anl-sec">
+        <div class="slabel">Stride rhythm pattern</div>
+        <div class="spk-w" id="sparkline"></div>
+        <div style="font-size:9px;color:var(--txt3);margin-top:3px;font-family:var(--mono);">H1–H10 · height = relative interval · amber = flagged</div>
+      </div>
+      <div class="anl-sec">
+        <div class="slabel">Split-half asymmetry (H1–5 vs H6–10)</div>
+        <div class="asym-r">
+          <div class="asym-lbl" id="asymL">—</div>
+          <div class="asym-b"><div class="asym-fl" id="aFL" style="width:0%;background:var(--accent);"></div><div class="asym-fr" id="aFR" style="width:0%;background:var(--amber);"></div><div class="asym-c"></div></div>
+          <div class="asym-lbl" id="asymR">—</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--txt3);margin-top:3px;padding:0 36px;"><span>H1–5 avg</span><span>H6–10 avg</span></div>
+      </div>
+      <div class="anl-sec">
+        <div class="slabel">Race model deltas</div>
+        <div class="mgr" id="modelGrid"><div style="grid-column:1/-1;font-size:11px;color:var(--txt3);padding:6px 0;">Tag touchdowns to see model deltas.</div></div>
+      </div>
+      <div class="anl-sec" id="insightCards">
+        <div class="slabel">Automated insights</div>
+        <div style="font-size:11px;color:var(--txt3);padding:6px 0;">Tag at least 5 hurdles to generate insights.</div>
+      </div>
+    </div>
+    <!-- NOTES -->
+    <div class="pb" id="panel-notes">
+      <div class="npanel">
+        <div><div class="flbl" style="margin-bottom:5px;">Session notes</div>
+          <textarea class="na" id="sessionNotes" placeholder="Wind, track, athlete condition, tactical notes…" rows="4"></textarea>
+        </div>
+        <div><div class="flbl" style="margin-bottom:5px;">Quick technical tags (attach to next tagged touchdown)</div>
+          <div class="qtrow" id="qtrow">
+            <div class="qt" onclick="this.classList.toggle('sel')">lead leg late</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">trail leg wide</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">stutter step</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">body lean</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">deceleration</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">attack angle</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">arm action</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">stride length</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">rhythm break</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">flat-footed</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">hip drop</div>
+            <div class="qt" onclick="this.classList.toggle('sel')">great clearance</div>
+          </div>
+        </div>
+        <div><div class="flbl" style="margin-bottom:5px;">Saved sessions</div>
+          <div id="savedList" style="display:flex;flex-direction:column;gap:4px;"></div>
+          <div style="font-size:11px;color:var(--txt3);" id="noSaved">No saved sessions.</div>
+        </div>
+      </div>
+    </div>
+    <!-- MARKS -->
+    <div class="pb" id="panel-marks">
+      <div style="padding:9px 13px 5px;border-bottom:1px solid var(--line);">
+        <div class="slabel" style="margin-bottom:4px;">Frame bookmarks</div>
+        <div style="font-size:11px;color:var(--txt3);">Press <kbd>B</kbd> to bookmark. Click to jump back.</div>
+      </div>
+      <div class="bk-list" id="bkList">
+        <div style="font-size:11px;color:var(--txt3);padding:6px 0;" id="noBk">No bookmarks yet.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const video=document.getElementById('videoEl');
+const MODELS={
+  wc_men:[1.09,1.02,1.02,1.01,1.01,1.02,1.02,1.03,1.04,1.05],
+  wc_women:[1.02,0.98,0.97,0.97,0.97,0.97,0.97,0.98,0.99,1.01]
+};
+let fps=30,startTime=null,tds=[],bookmarks=[],sessions=[],schart=null,cmode='bar';
+const nh=()=>parseInt(document.getElementById('mCount').value);
+const fmt3=s=>s==null?'—':s.toFixed(3);
+const fmtTC=s=>{const m=Math.floor(s/60),sc=(s%60).toFixed(3).padStart(6,'0');return String(m).padStart(2,'0')+':'+sc;};
+const curSec=()=>video.currentTime;
+const curFrame=()=>Math.round(curSec()*fps);
+const getIvs=()=>tds.map((t,i)=>t.time-(i===0?0:tds[i-1].time));
+const getAvg=()=>{const iv=getIvs();return iv.length?iv.reduce((a,b)=>a+b,0)/iv.length:0;};
+const getCV=()=>{const iv=getIvs();if(iv.length<2)return 0;const avg=getAvg(),sd=Math.sqrt(iv.map(v=>(v-avg)**2).reduce((a,b)=>a+b,0)/iv.length);return(sd/avg)*100;};
+const rScore=()=>{const cv=getCV();return tds.length?Math.max(0,Math.min(100,Math.round(100-cv*18))):null;};
+
+// file load
+const dz=document.getElementById('dropZone');
+dz.addEventListener('click',()=>document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change',e=>loadFile(e.target.files[0]));
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');loadFile(e.dataTransfer.files[0]);});
+
+function loadFile(f){
+  if(!f) return;
+  video.src=URL.createObjectURL(f);
+  video.style.display='block';
+  dz.style.display='none';
+  document.getElementById('hud').style.display='block';
+  document.getElementById('zoomLoupe').style.display='block';
+  document.getElementById('targetBadge').style.display='block';
+  document.getElementById('tagBtn').disabled=false;
+  detectFps(f.name);
+  video.addEventListener('loadedmetadata',()=>{
+    document.getElementById('scrubber').max=Math.floor(video.duration*1000);
+    document.getElementById('tcDur').textContent=fmtTC(video.duration);
+    document.getElementById('statusPill').textContent='READY';
+    document.getElementById('fpsPill').style.display='';
+    document.getElementById('fpsPill').textContent=fps+'fps';
+    document.getElementById('sessPill').style.display='';
+    document.getElementById('sessPill').textContent=f.name.replace(/\.[^.]+$/,'').slice(0,22);
+    resetData();
+  },{once:true});
+  video.addEventListener('timeupdate',onTU);
+  video.addEventListener('seeking',onTU);
+  video.addEventListener('timeupdate',drawZoom);
+  video.addEventListener('seeked',drawZoom);
+}
+
+function detectFps(n){
+  const l=n.toLowerCase();
+  fps=l.includes('240')?240:l.includes('120')?120:l.includes('60')?60:l.includes('50')?50:29.97;
+  document.getElementById('mFps').value=fps+' fps';
+  document.getElementById('fpsPill').textContent=fps+'fps';
+}
+
+function drawZoom(){
+  const c=document.getElementById('zoomCanvas'),ctx=c.getContext('2d');
+  c.width=150;c.height=84;
+  try{ctx.drawImage(video,video.videoWidth*.25,video.videoHeight*.35,video.videoWidth*.5,video.videoHeight*.45,0,0,150,84);}catch(e){}
+}
+
+function onTU(){
+  const t=curSec(),f=curFrame();
+  document.getElementById('hudTC').textContent=fmt3(t);
+  document.getElementById('hudMeta').textContent='Frame '+f+' · '+fps+' fps';
+  document.getElementById('scrubber').value=Math.floor(t*1000);
+  document.getElementById('tcCur').textContent=fmtTC(t);
+  document.getElementById('tlProg').style.width=(video.duration?t/video.duration*100:0)+'%';
+  updateHudNext();renderTlMarks();
+}
+
+function updateHudNext(){
+  const n=nh(),m=tds.length;
+  if(startTime==null){
+    document.getElementById('hudNext').textContent='↑ Set start time (G)';
+    document.getElementById('tbH').textContent='Start';document.getElementById('tbS').textContent='Press G';
+  } else if(m<n){
+    document.getElementById('hudNext').textContent='→ Tag H'+(m+1)+' touchdown';
+    document.getElementById('tbH').textContent='H'+(m+1);document.getElementById('tbS').textContent='Space to tag';
+  } else {
+    document.getElementById('hudNext').textContent='✓ All touchdowns logged';
+    document.getElementById('tbH').textContent='Done';document.getElementById('tbS').textContent='Export ↓';
+    document.getElementById('targetBadge').style.display='none';
+  }
+}
+
+document.getElementById('scrubber').addEventListener('input',function(){video.currentTime=this.value/1000;});
+function togglePlay(){
+  if(video.paused){video.play();setPI(true);}else{video.pause();setPI(false);}
+}
+video.addEventListener('ended',()=>setPI(false));
+function setPI(p){
+  const b=document.getElementById('playBtn');
+  b.innerHTML=p
+    ?`<svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg><kbd style="background:rgba(0,0,0,0.2);border-color:rgba(0,0,0,0.3);color:rgba(0,0,0,0.6);">K</kbd>`
+    :`<svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg><kbd style="background:rgba(0,0,0,0.2);border-color:rgba(0,0,0,0.3);color:rgba(0,0,0,0.6);">K</kbd>`;
+}
+function stepFrame(n){video.pause();setPI(false);video.currentTime=Math.max(0,Math.min(video.duration||0,video.currentTime+n/fps));}
+
+function tagStart(){
+  if(!video.src)return;
+  video.pause();setPI(false);
+  startTime=curSec();tds=[];
+  renderTable();updateStats();updateScore();drawChart();updateHudNext();renderTlMarks();
+  toast('Start set: '+fmt3(startTime)+'s');
+  document.getElementById('statusPill').textContent='LOGGING';
+}
+
+function tagTouchdown(){
+  if(!video.src)return;
+  if(startTime==null){tagStart();return;}
+  video.pause();setPI(false);
+  if(tds.length>=nh())return;
+  const t=curSec()-startTime;
+  const noteTxt=document.getElementById('tdNote').value.trim();
+  const qtags=[...document.querySelectorAll('.qt.sel')].map(el=>el.textContent).join(', ');
+  tds.push({time:t,frame:curFrame(),note:noteTxt||(qtags||'')});
+  document.getElementById('tdNote').value='';
+  document.querySelectorAll('.qt.sel').forEach(el=>el.classList.remove('sel'));
+  const tb=document.getElementById('tagBtn');
+  tb.style.animation='tagFlash .35s ease';
+  setTimeout(()=>{tb.style.animation='';},350);
+  renderTable();updateStats();updateScore();drawChart();updateInsights();updateHudNext();renderTlMarks();
+  if(tds.length===nh()){toast('All '+nh()+' touchdowns logged ✓');document.getElementById('statusPill').textContent='COMPLETE';}
+}
+
+function delTD(i){tds.splice(i,1);renderTable();updateStats();updateScore();drawChart();updateInsights();updateHudNext();renderTlMarks();}
+function seekToTD(i){if(tds[i]&&startTime!=null)video.currentTime=startTime+tds[i].time;}
+
+function renderTable(){
+  const tb=document.getElementById('tbody');tb.innerHTML='';
+  const n=nh(),avg=getAvg(),ivs=getIvs();
+  const mk=document.getElementById('mModel').value,mdl=MODELS[mk]||null;
+  const maxIv=ivs.length?Math.max(...ivs):1;
+  if(startTime!=null){const r=document.createElement('tr');r.innerHTML=`<td class="mn" style="color:var(--txt3)">S</td><td class="mn" style="color:var(--txt3)">0.000</td><td style="color:var(--txt3)">gun</td><td></td><td></td>`;tb.appendChild(r);}
+  tds.forEach((td,i)=>{
+    const iv=ivs[i],fl=(avg>0&&Math.abs(iv-avg)/avg>0.13)||td.flagged;
+    const d=avg>0?iv-avg:0,dc=d>0.015?'pos':d<-0.015?'neg':'neu';
+    const ds=d===0?'—':(d>0?'+':'')+d.toFixed(3);
+    const bp=Math.round(iv/maxIv*100),bc=fl?'var(--amber)':d<-0.015?'var(--green)':'var(--accent)';
+    let mh='';
+    if(mdl&&mdl[i]!=null){const md=iv-mdl[i],mc=md>0.02?'slow':md<-0.02?'fast':'on';mh=`<span class="dc" style="margin-left:4px;${mc==='slow'?'background:var(--red-dim);color:var(--red)':mc==='fast'?'background:var(--green-dim);color:var(--green)':'background:var(--bg3);color:var(--txt3)'}">${md>0?'+':''}${md.toFixed(3)}</span>`;}
+    const r=document.createElement('tr');
+    r.className='tagged'+(fl?' flagged':'');
+    r.addEventListener('click',e=>{if(!e.target.closest('.delx'))seekToTD(i);});
+    r.innerHTML=`<td class="mn" style="font-weight:500;color:${fl?'var(--amber)':'var(--txt)'}">${fl?'<span class="fdot"></span>':''}H${i+1}</td>
+      <td class="mn" style="color:var(--txt2)">${fmt3(td.time)}</td>
+      <td><div class="ibar-w"><div class="ibar-t"><div class="ibar-f" style="width:${bp}%;background:${bc};"></div></div><span class="dc ${dc}">${ds}</span>${mh}</div></td>
+      <td>${td.note?`<span class="nc" title="${td.note}">${td.note}</span>`:''}</td>
+      <td><span class="delx ra" onclick="delTD(${i})">✕</span></td>`;
+    tb.appendChild(r);
+  });
+  for(let i=tds.length;i<n;i++){
+    const r=document.createElement('tr');r.className='pending'+(i===tds.length&&startTime!=null?' next-target':'');
+    r.innerHTML=`<td class="mn">H${i+1}</td><td style="color:var(--txt3)">—</td><td style="color:var(--txt3)">—</td><td></td><td></td>`;tb.appendChild(r);
+  }
+}
+
+function updateStats(){
+  const ivs=getIvs(),n=nh();
+  document.getElementById('stCount').textContent=tds.length+'/'+n;
+  if(!ivs.length){['stAvg','stBest','stWorst'].forEach(id=>document.getElementById(id).textContent='—');return;}
+  document.getElementById('stAvg').textContent=getAvg().toFixed(3);
+  document.getElementById('stBest').textContent=Math.min(...ivs).toFixed(3);
+  document.getElementById('stWorst').textContent=Math.max(...ivs).toFixed(3);
+}
+
+function updateScore(){
+  const s=rScore(),cv=getCV();
+  document.getElementById('cvLbl').textContent='CV '+cv.toFixed(1)+'%';
+  if(s===null){document.getElementById('scoreNum').textContent='—';document.getElementById('scoreGrade').textContent='—';document.getElementById('scoreArc').style.strokeDashoffset='131.9';document.getElementById('scoreBar').style.width='0%';return;}
+  document.getElementById('scoreArc').style.strokeDashoffset=131.9*(1-s/100);
+  document.getElementById('scoreNum').textContent=s;
+  let gr,col;
+  if(s>=90){gr='ELITE';col='var(--green)';}else if(s>=75){gr='GOOD';col='var(--accent)';}else if(s>=55){gr='AVERAGE';col='var(--amber)';}else{gr='IRREGULAR';col='var(--red)';}
+  document.getElementById('scoreGrade').textContent=gr;document.getElementById('scoreGrade').style.color=col;
+  document.getElementById('scoreArc').style.stroke=col;document.getElementById('scoreBar').style.width=s+'%';document.getElementById('scoreBar').style.background=col;
+}
+
+function setChartMode(m){
+  cmode=m;
+  document.getElementById('pBar').classList.toggle('active',m==='bar');
+  document.getElementById('pLine').classList.toggle('active',m==='line');
+  drawChart();
+}
+
+function drawChart(){
+  const ivs=getIvs();if(!ivs.length){if(schart){schart.destroy();schart=null;}return;}
+  const avg=getAvg(),labels=ivs.map((_,i)=>'H'+(i+1));
+  const colors=ivs.map(v=>Math.abs(v-avg)/avg>0.13?'rgba(255,176,32,0.75)':'rgba(0,212,255,0.65)');
+  const mk=document.getElementById('mModel').value,mdl=MODELS[mk];
+  if(schart)schart.destroy();
+  const ctx=document.getElementById('splitChart').getContext('2d');
+  const ds=[{data:ivs.map(v=>parseFloat(v.toFixed(3))),backgroundColor:cmode==='bar'?colors:'transparent',borderColor:cmode==='line'?'rgba(0,212,255,0.8)':colors,borderWidth:cmode==='line'?2:0,borderRadius:cmode==='bar'?3:0,borderSkipped:false,tension:0.35,pointBackgroundColor:'rgba(0,212,255,1)',pointRadius:cmode==='line'?3:0,fill:cmode==='line'?{target:'origin',above:'rgba(0,212,255,0.04)'}:false}];
+  if(mdl&&tds.length>0)ds.push({data:mdl.slice(0,ivs.length),borderColor:'rgba(255,255,255,0.13)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false,tension:0.35,type:'line'});
+  schart=new Chart(ctx,{type:cmode,data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:{duration:200},plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(10,11,13,0.95)',borderColor:'rgba(255,255,255,0.08)',borderWidth:1,titleFont:{family:'JetBrains Mono,monospace',size:10},bodyFont:{family:'JetBrains Mono,monospace',size:11},callbacks:{label:c=>{const v=c.parsed.y.toFixed(3)+'s',d=c.parsed.y-avg;return[v,(d>0?'+':'')+d.toFixed(3)+'s vs avg'];}}}},scales:{x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#565b66',font:{family:'JetBrains Mono,monospace',size:9}}},y:{grid:{color:'rgba(255,255,255,0.035)'},ticks:{color:'#565b66',font:{family:'JetBrains Mono,monospace',size:9},callback:v=>v.toFixed(2)},suggestedMin:avg?avg*.87:0,suggestedMax:avg?avg*1.13:4}}}});
+}
+
+function renderTlMarks(){
+  const c=document.getElementById('tlMarks');c.innerHTML='';
+  if(!video.duration)return;
+  const dur=video.duration;
+  if(startTime!=null){
+    const p=(startTime/dur*100).toFixed(2)+'%';
+    const m=document.createElement('div');m.className='tl-mk smk';m.style.left=p;
+    const l=document.createElement('div');l.className='tl-mk-lbl smk';l.style.left=p;l.textContent='S';
+    c.appendChild(m);c.appendChild(l);
+  }
+  tds.forEach((td,i)=>{
+    const abs=(startTime||0)+td.time,p=(abs/dur*100).toFixed(2)+'%';
+    const m=document.createElement('div');m.className='tl-mk';m.style.left=p;
+    const l=document.createElement('div');l.className='tl-mk-lbl';l.style.left=p;l.textContent='H'+(i+1);
+    c.appendChild(m);c.appendChild(l);
+  });
+  bookmarks.forEach(bk=>{
+    const p=(bk.t/dur*100).toFixed(2)+'%';
+    const m=document.createElement('div');m.className='tl-mk bmk';m.style.left=p;
+    c.appendChild(m);
+  });
+}
+
+function updateInsights(){
+  const ivs=getIvs();if(ivs.length<2)return;
+  const avg=getAvg(),cv=getCV();
+  const spk=document.getElementById('sparkline');spk.innerHTML='';
+  const mx=Math.max(...ivs);
+  ivs.forEach((iv,i)=>{
+    const h=Math.round(iv/mx*20)+2,fl=avg>0&&Math.abs(iv-avg)/avg>0.13;
+    const b=document.createElement('div');b.className='spk-b';b.style.height=h+'px';b.style.background=fl?'var(--amber)':'var(--accent)';b.style.opacity=fl?'1':'0.55';b.title='H'+(i+1)+': '+iv.toFixed(3)+'s';spk.appendChild(b);
+  });
+  // asymmetry
+  if(ivs.length>=6){
+    const a1=ivs.slice(0,5).reduce((a,b)=>a+b,0)/5,a2=ivs.slice(5,10).reduce((a,b)=>a+b,0)/Math.min(ivs.length-5,5);
+    const diff=(a2-a1)/a1*100,mag=Math.min(Math.abs(diff)*4,50);
+    document.getElementById('asymL').textContent=a1.toFixed(3);document.getElementById('asymR').textContent=a2.toFixed(3);
+    if(diff>0){document.getElementById('aFL').style.width='0%';document.getElementById('aFR').style.width=mag+'%';}
+    else{document.getElementById('aFR').style.width='0%';document.getElementById('aFL').style.width=mag+'%';}
+  }
+  // model grid
+  const mk=document.getElementById('mModel').value,mdl=MODELS[mk];
+  const mg=document.getElementById('modelGrid');mg.innerHTML='';
+  if(mdl){ivs.forEach((iv,i)=>{const md=iv-mdl[i],cl=md>0.02?'slow':md<-0.02?'fast':'on';const el=document.createElement('div');el.className='mr';el.innerHTML=`<span class="mh">H${i+1}</span><span class="md ${cl}">${md>0?'+':''}${md.toFixed(3)}</span>`;mg.appendChild(el);});}
+  else{mg.innerHTML='<div style="grid-column:1/-1;font-size:11px;color:var(--txt3);padding:5px 0;">Select a race model above.</div>';}
+  // insight cards
+  const ic=document.getElementById('insightCards');ic.innerHTML='<div class="slabel" style="margin-bottom:4px;">Automated insights</div>';
+  if(cv<2)addIC(ic,'good','Elite rhythm consistency',`CV of ${cv.toFixed(1)}% is world-class. Athlete shows high inter-hurdle regularity consistent with Olympic-level performance.`);
+  else if(cv>6)addIC(ic,'warn','Inconsistent rhythm detected',`CV of ${cv.toFixed(1)}% indicates significant stride variability. Target: under 3% for elite. Check H${getIvs().indexOf(Math.max(...getIvs()))+1} for primary breakdown.`);
+  if(ivs.length>=6){const a1=ivs.slice(0,5).reduce((a,b)=>a+b,0)/5,a2=ivs.slice(5).reduce((a,b)=>a+b,0)/Math.min(ivs.length-5,5),diff=(a2-a1)/a1*100;
+    if(Math.abs(diff)>3)addIC(ic,diff>0?'warn':'info',diff>0?`${diff.toFixed(1)}% fatigue gradient H6–10`:`${Math.abs(diff).toFixed(1)}% stronger second half`,diff>0?`H6–10 splits are averaging ${diff.toFixed(1)}% slower than H1–5. Classic late-race deceleration. Prioritise event-specific conditioning for the 70–100m zone.`:`Second half splits are faster than first half by ${Math.abs(diff).toFixed(1)}%. Athlete may be underperforming early hurdles or executing a negative split strategy.`);}
+  const wi=ivs.indexOf(Math.max(...ivs));
+  if(avg>0&&(ivs[wi]-avg)/avg>0.12)addIC(ic,'warn',`Rhythm break at H${wi+1}`,`Interval ${ivs[wi].toFixed(3)}s is ${((ivs[wi]-avg)/avg*100).toFixed(1)}% above average. Primary fault location. Review for stutter step, early hurdle preparation or technical breakdown in this zone.`);
+  if(mdl&&ivs.length>=5){const td=ivs.reduce((s,iv,i)=>s+(iv-(mdl[i]||avg)),0);if(Math.abs(td)>0.1)addIC(ic,td>0?'warn':'good',td>0?`${td.toFixed(2)}s behind model pace`:`${Math.abs(td).toFixed(2)}s ahead of model pace`,td>0?'Cumulative deficit vs elite model. Athlete is losing time across hurdles. Consider hurdle clearance height, stride rate, and transition speed.':'Athlete tracking ahead of elite model through tagged hurdles.');}
+}
+
+function addIC(container,type,title,body){const c=document.createElement('div');c.className=`ic ${type}`;c.innerHTML=`<div class="ic-t ${type}">${title}</div><div class="ic-b">${body}</div>`;container.appendChild(c);}
+
+function addBookmark(){
+  if(!video.src)return;
+  const n=prompt('Bookmark label (optional):','');
+  bookmarks.push({t:curSec(),frame:curFrame(),note:n||''});
+  renderBks();renderTlMarks();toast('Bookmark: '+fmtTC(curSec()));
+}
+
+function renderBks(){
+  const list=document.getElementById('bkList');
+  document.getElementById('noBk').style.display=bookmarks.length?'none':'';
+  list.querySelectorAll('.bk-item').forEach(el=>el.remove());
+  bookmarks.forEach((bk,i)=>{
+    const el=document.createElement('div');el.className='bk-item';
+    el.innerHTML=`<span class="bk-tc">${fmtTC(bk.t)}</span><span class="bk-n">${bk.note||'(unlabeled)'}</span><span class="bk-d" onclick="bookmarks.splice(${i},1);renderBks();renderTlMarks();event.stopPropagation()">✕</span>`;
+    el.addEventListener('click',()=>{video.currentTime=bk.t;});list.appendChild(el);
+  });
+}
+
+function saveSession(){
+  if(!tds.length){toast('Nothing to save');return;}
+  const s={athlete:document.getElementById('mAthlete').value||'Athlete',race:document.getElementById('mRace').value,date:new Date().toLocaleDateString(),tds:[...tds],fps,startTime,notes:document.getElementById('sessionNotes').value};
+  sessions.push(s);renderSaved();toast('Saved: '+s.athlete);
+}
+
+function renderSaved(){
+  const list=document.getElementById('savedList');list.innerHTML='';
+  document.getElementById('noSaved').style.display=sessions.length?'none':'';
+  sessions.forEach((s,i)=>{
+    const el=document.createElement('div');el.className='bk-item';
+    el.innerHTML=`<span class="bk-tc">${s.date}</span><span class="bk-n">${s.athlete} · ${s.race.split(' ')[0]} · ${s.tds.length}H</span><span class="bk-d" onclick="sessions.splice(${i},1);renderSaved();event.stopPropagation()">✕</span>`;
+    el.addEventListener('click',()=>{tds=[...s.tds];startTime=s.startTime;fps=s.fps;renderTable();updateStats();updateScore();drawChart();updateInsights();toast('Loaded: '+s.athlete);});
+    list.appendChild(el);
+  });
+}
+
+function buildCSV(){
+  const ivs=getIvs(),avg=getAvg(),cv=getCV(),sc=rScore();
+  const a=document.getElementById('mAthlete').value||'',r=document.getElementById('mRace').value,hh=document.getElementById('mHeight').value,l=document.getElementById('mLane').value,n=document.getElementById('sessionNotes').value.replace(/\n/g,' ');
+  const mk=document.getElementById('mModel').value,mdl=MODELS[mk];
+  const headers=['Athlete','Race','Height','Lane','FPS','Rhythm_score','CV_pct','Hurdle','Touchdown_s','Frame','Interval_s','Delta_avg','Model_delta','Flag','Note','Session_notes'];
+  const rows=[headers.join(',')];
+  tds.forEach((td,i)=>{
+    const iv=ivs[i],da=avg?(iv-avg).toFixed(3):'',md=mdl?(iv-mdl[i]).toFixed(3):'',fl=(avg>0&&Math.abs(iv-avg)/avg>0.13)||td.flagged?'FLAG':'';
+    rows.push([a,r,hh,l,fps,sc,cv.toFixed(2),'H'+(i+1),td.time.toFixed(3),td.frame,iv.toFixed(3),da,md,fl,`"${td.note||''}"`,`"${n}"`].join(','));
+  });
+  return rows.join('\n');
+}
+
+function exportCSV(){
+  const blob=new Blob([buildCSV()],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`apex_${(document.getElementById('mAthlete').value||'athlete').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();toast('CSV exported');
+}
+
+function copyTSV(){
+  const ivs=getIvs(),avg=getAvg();
+  const rows=[['H','Time','Interval','Δ avg','Note'].join('\t')];
+  tds.forEach((td,i)=>rows.push(['H'+(i+1),td.time.toFixed(3),ivs[i].toFixed(3),avg?(ivs[i]-avg).toFixed(3):'—',td.note||''].join('\t')));
+  navigator.clipboard.writeText(rows.join('\n')).then(()=>toast('Copied — paste into Sheets'));
+}
+
+function resetData(){
+  tds=[];startTime=null;
+  renderTable();updateStats();updateScore();
+  if(schart){schart.destroy();schart=null;}
+  document.getElementById('insightCards').innerHTML='<div class="slabel">Automated insights</div><div style="font-size:11px;color:var(--txt3);padding:6px 0;">Tag at least 5 hurdles to generate insights.</div>';
+  document.getElementById('sparkline').innerHTML='';
+  document.getElementById('modelGrid').innerHTML='<div style="grid-column:1/-1;font-size:11px;color:var(--txt3);padding:6px 0;">Tag touchdowns to see model deltas.</div>';
+  document.getElementById('asymL').textContent='—';document.getElementById('asymR').textContent='—';
+  document.getElementById('aFL').style.width='0%';document.getElementById('aFR').style.width='0%';
+  updateHudNext();renderTlMarks();
+}
+
+function switchPanel(p){
+  document.querySelectorAll('.pb').forEach(el=>{el.classList.remove('active');});
+  const el=document.getElementById('panel-'+p);if(el)el.classList.add('active');
+}
+function setActiveTab(el){document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));el.classList.add('active');}
+
+function showKeys(){
+  alert('APEX — Keyboard Reference\n\nSpace       Tag touchdown (or set start)\nG           Set gun / start time\nK           Play / pause\n← →         Step 1 frame\nShift+← →   Step 5 frames\nB           Bookmark current frame\nJ           Speed 0.25×\nL           Speed 1×\n, .         Step back / forward 1 frame\nCtrl+Z      Undo last tag\nR           Reset session (with confirm)');
+}
+
+let toastT;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2200);}
+
+document.addEventListener('keydown',e=>{
+  const ty=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT';
+  if(e.code==='Space'&&!ty){e.preventDefault();tagTouchdown();}
+  if(e.code==='ArrowLeft'&&!ty){e.preventDefault();stepFrame(e.shiftKey?-5:-1);}
+  if(e.code==='ArrowRight'&&!ty){e.preventDefault();stepFrame(e.shiftKey?5:1);}
+  if(e.code==='KeyK'&&!ty){e.preventDefault();togglePlay();}
+  if(e.code==='KeyG'&&!ty){e.preventDefault();tagStart();}
+  if(e.code==='KeyB'&&!ty){e.preventDefault();addBookmark();}
+  if(e.code==='KeyJ'&&!ty){document.getElementById('speedSel').value='0.25';video.playbackRate=0.25;}
+  if(e.code==='KeyL'&&!ty){document.getElementById('speedSel').value='1';video.playbackRate=1;}
+  if(e.code==='Comma'&&!ty){e.preventDefault();stepFrame(-1);}
+  if(e.code==='Period'&&!ty){e.preventDefault();stepFrame(1);}
+  if((e.code==='KeyZ')&&(e.ctrlKey||e.metaKey)&&!ty){e.preventDefault();if(tds.length){tds.pop();renderTable();updateStats();updateScore();drawChart();updateInsights();updateHudNext();renderTlMarks();toast('Undone');}}
+  if(e.code==='KeyR'&&!ty&&!e.ctrlKey){if(confirm('Reset current session data?'))resetData();}
+});
+
+renderTable();
+</script>
+</body>
+</html>
